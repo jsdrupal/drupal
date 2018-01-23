@@ -1,28 +1,15 @@
 const chromedriver = require('chromedriver');
-const settings = require('../../../nightwatch.settings.json');
+const env = require('./env');
 
 module.exports = {
   before: (done) => {
-    // Setting up 
-    const baseUrl = process.env.SIMPLETEST_BASE_URL || settings.BASE_URL || process.env.BASE_URL;
-
-    if (baseUrl === undefined) {
-      throw new Error('Missing a BASE_URL or SIMPLETEST_BASE_URL configuration item.');
-    }
-
-    process.env.BASE_URL = process.env.SIMPLETEST_BASE_URL = baseUrl;
-
-    // Note: The simpletest DB is optional, when there is a local drupal
-    // installation.
-    process.env.SIMPLETEST_DB = process.env.SIMPLETEST_DB || settings.DB_URL;
-
-    if (process.env.NODE_ENV !== 'testbot') {
+    if (env.NODE_ENV !== 'testbot') {
       chromedriver.start();
     }
     done();
   },
   after: (done) => {
-    if (process.env.NODE_ENV !== 'testbot') {
+    if (env.NODE_ENV !== 'testbot') {
       chromedriver.stop();
     }
     done();
