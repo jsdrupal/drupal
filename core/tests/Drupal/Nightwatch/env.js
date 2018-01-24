@@ -2,7 +2,7 @@ const fs = require('fs');
 
 const env = {};
 
-if (!fs.fileExistsSync('../../../nightwatch.settings.json')) {
+if (!fs.existsSync('nightwatch.settings.json')) {
   throw new Error('You need to setup the nightwatch.settings.json.default to nightwatch.settings.json')
 }
 
@@ -51,5 +51,5 @@ availableSettings.forEach((setting) => {
   }
 });
 
-module.export = env;
+module.exports = env;
 
