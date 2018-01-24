@@ -1,4 +1,4 @@
-const env = require('./core/tests/Drupal/Nightwatch/env');
+const env = require('./tests/Drupal/Nightwatch/env');
 
 const args = ['--disable-gpu', ...env.CHROME_ARGS];
 if (env.HEADLESS_CHROME) {
