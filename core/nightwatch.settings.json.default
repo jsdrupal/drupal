@@ -2,7 +2,7 @@
   "BASE_URL": "",
   "DB_URL": "",
   "NIGHTWATCH_OUTPUT": "reports/nightwatch",
-  "NIGHTWATCH_HOSTNAME": "",
+  "WEBDRIVER_HOSTNAME": "",
   "HEADLESS_CHROME": true,
   "CHROME_ARGS": []
 }
