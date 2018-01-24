@@ -37,19 +37,21 @@ availableSettings.forEach((setting) => {
       if (settings[settingName]) {
         return settings[settingName];
       }
-    });
+    }, '');
   }
 
   if (envSetting) {
     setting.forEach((settingName) => {
-      env[setting] = process.env[settingName] = envSetting;
+      env[settingName] = process.env[settingName] = envSetting;
     });
   // Note: The simpletest DB is optional, when there is a local drupal
   // installation.
-  } else if (setting.findIndex('DB_URL') === -1) {
-    throw new Error(`Missing ${settings.join(', ')} configuration item or environment variable.`);
+  } else if (!setting.includes('DB_URL')) {
+    throw new Error(`Missing ${setting.join(', ')} configuration item or environment variable.`);
   }
 });
+
+console.log(env);
 
 module.exports = env;
 
