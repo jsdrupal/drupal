@@ -4,6 +4,8 @@ namespace Drupal\Tests\layout_builder\Functional;
 
 use Drupal\Core\Entity\Entity\EntityViewDisplay;
 use Drupal\language\Entity\ConfigurableLanguage;
+use Drupal\layout_builder\Section;
+use Drupal\layout_builder\SectionComponent;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -53,22 +55,17 @@ class LayoutSectionTest extends BrowserTestBase {
    */
   public function providerTestLayoutSectionFormatter() {
     $data = [];
-    $data['block_with_context'] = [
+    $data['block_with_global_context'] = [
       [
         [
-          'layout' => 'layout_onecol',
-          'section' => [
-            'content' => [
-              'baz' => [
-                'block' => [
-                  'id' => 'test_context_aware',
-                  'context_mapping' => [
-                    'user' => '@user.current_user_context:current_user',
-                  ],
-                ],
+          'section' => new Section('layout_onecol', [], [
+            'baz' => new SectionComponent('baz', 'content', [
+              'id' => 'test_context_aware',
+              'context_mapping' => [
+                'user' => '@user.current_user_context:current_user',
               ],
-            ],
-          ],
+            ]),
+          ]),
         ],
       ],
       [
@@ -83,19 +80,39 @@ class LayoutSectionTest extends BrowserTestBase {
       'user:2',
       'UNCACHEABLE',
     ];
+    $data['block_with_entity_context'] = [
+      [
+        [
+          'section' => new Section('layout_onecol', [], [
+            'baz' => new SectionComponent('baz', 'content', [
+              'id' => 'field_block:node:body',
+              'context_mapping' => [
+                'entity' => 'layout_builder.entity',
+              ],
+            ]),
+          ]),
+        ],
+      ],
+      [
+        '.layout--onecol',
+        '.field--name-body',
+      ],
+      [
+        'Body',
+        'The node body',
+      ],
+      '',
+      '',
+      'MISS',
+    ];
     $data['single_section_single_block'] = [
       [
         [
-          'layout' => 'layout_onecol',
-          'section' => [
-            'content' => [
-              'baz' => [
-                'block' => [
-                  'id' => 'system_powered_by_block',
-                ],
-              ],
-            ],
-          ],
+          'section' => new Section('layout_onecol', [], [
+            'baz' => new SectionComponent('baz', 'content', [
+              'id' => 'system_powered_by_block',
+            ]),
+          ]),
         ],
       ],
       '.layout--onecol',
@@ -107,37 +124,23 @@ class LayoutSectionTest extends BrowserTestBase {
     $data['multiple_sections'] = [
       [
         [
-          'layout' => 'layout_onecol',
-          'section' => [
-            'content' => [
-              'baz' => [
-                'block' => [
-                  'id' => 'system_powered_by_block',
-                ],
-              ],
-            ],
-          ],
+          'section' => new Section('layout_onecol', [], [
+            'baz' => new SectionComponent('baz', 'content', [
+              'id' => 'system_powered_by_block',
+            ]),
+          ]),
         ],
         [
-          'layout' => 'layout_twocol',
-          'section' => [
-            'first' => [
-              'foo' => [
-                'block' => [
-                  'id' => 'test_block_instantiation',
-                  'display_message' => 'foo text',
-                ],
-              ],
-            ],
-            'second' => [
-              'bar' => [
-                'block' => [
-                  'id' => 'test_block_instantiation',
-                  'display_message' => 'bar text',
-                ],
-              ],
-            ],
-          ],
+          'section' => new Section('layout_twocol', [], [
+            'foo' => new SectionComponent('foo', 'first', [
+              'id' => 'test_block_instantiation',
+              'display_message' => 'foo text',
+            ]),
+            'bar' => new SectionComponent('bar', 'second', [
+              'id' => 'test_block_instantiation',
+              'display_message' => 'bar text',
+            ]),
+          ]),
         ],
       ],
       [
@@ -177,16 +180,11 @@ class LayoutSectionTest extends BrowserTestBase {
   public function testLayoutSectionFormatterAccess() {
     $node = $this->createSectionNode([
       [
-        'layout' => 'layout_onecol',
-        'section' => [
-          'content' => [
-            'baz' => [
-              'block' => [
-                'id' => 'test_access',
-              ],
-            ],
-          ],
-        ],
+        'section' => new Section('layout_onecol', [], [
+          'baz' => new SectionComponent('baz', 'content', [
+            'id' => 'test_access',
+          ]),
+        ]),
       ],
     ]);
 
@@ -216,41 +214,27 @@ class LayoutSectionTest extends BrowserTestBase {
 
     $entity = $this->createSectionNode([
       [
-        'layout' => 'layout_onecol',
-        'section' => [
-          'content' => [
-            'baz' => [
-              'block' => [
-                'id' => 'system_powered_by_block',
-              ],
-            ],
-          ],
-        ],
+        'section' => new Section('layout_onecol', [], [
+          'baz' => new SectionComponent('baz', 'content', [
+            'id' => 'system_powered_by_block',
+          ]),
+        ]),
       ],
     ]);
     $entity->addTranslation('es', [
       'title' => 'Translated node title',
       $this->fieldName => [
         [
-          'layout' => 'layout_twocol',
-          'section' => [
-            'first' => [
-              'foo' => [
-                'block' => [
-                  'id' => 'test_block_instantiation',
-                  'display_message' => 'foo text',
-                ],
-              ],
-            ],
-            'second' => [
-              'bar' => [
-                'block' => [
-                  'id' => 'test_block_instantiation',
-                  'display_message' => 'bar text',
-                ],
-              ],
-            ],
-          ],
+          'section' => new Section('layout_twocol', [], [
+            'foo' => new SectionComponent('foo', 'first', [
+              'id' => 'test_block_instantiation',
+              'display_message' => 'foo text',
+            ]),
+            'bar' => new SectionComponent('bar', 'second', [
+              'id' => 'test_block_instantiation',
+              'display_message' => 'bar text',
+            ]),
+          ]),
         ],
       ],
     ]);
@@ -289,7 +273,7 @@ class LayoutSectionTest extends BrowserTestBase {
     ]);
     $node->save();
     $this->drupalGet($node->toUrl('layout-builder'));
-    $this->assertSession()->statusCodeEquals(403);
+    $this->assertSession()->statusCodeEquals(404);
   }
 
   /**

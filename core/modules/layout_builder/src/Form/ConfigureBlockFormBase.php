@@ -6,7 +6,6 @@ use Drupal\Component\Uuid\UuidInterface;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\DependencyInjection\ClassResolverInterface;
-use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Form\SubformState;
@@ -15,9 +14,11 @@ use Drupal\Core\Plugin\ContextAwarePluginAssignmentTrait;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Plugin\PluginFormFactoryInterface;
 use Drupal\Core\Plugin\PluginWithFormsInterface;
+use Drupal\layout_builder\Context\LayoutBuilderContextTrait;
 use Drupal\layout_builder\Controller\LayoutRebuildTrait;
 use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
 use Drupal\layout_builder\Section;
+use Drupal\layout_builder\SectionStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -29,6 +30,7 @@ abstract class ConfigureBlockFormBase extends FormBase {
 
   use AjaxFormHelperTrait;
   use ContextAwarePluginAssignmentTrait;
+  use LayoutBuilderContextTrait;
   use LayoutRebuildTrait;
 
   /**
@@ -37,13 +39,6 @@ abstract class ConfigureBlockFormBase extends FormBase {
    * @var \Drupal\Core\Block\BlockPluginInterface
    */
   protected $block;
-
-  /**
-   * The context repository.
-   *
-   * @var \Drupal\Core\Plugin\Context\ContextRepositoryInterface
-   */
-  protected $contextRepository;
 
   /**
    * The layout tempstore repository.
@@ -88,11 +83,11 @@ abstract class ConfigureBlockFormBase extends FormBase {
   protected $region;
 
   /**
-   * The entity.
+   * The section storage.
    *
-   * @var \Drupal\Core\Entity\EntityInterface
+   * @var \Drupal\layout_builder\SectionStorageInterface
    */
-  protected $entity;
+  protected $sectionStorage;
 
   /**
    * Constructs a new block form.
@@ -159,8 +154,8 @@ abstract class ConfigureBlockFormBase extends FormBase {
    *   An associative array containing the structure of the form.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The current state of the form.
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity being configured.
+   * @param \Drupal\layout_builder\SectionStorageInterface $section_storage
+   *   The section storage being configured.
    * @param int $delta
    *   The delta of the section.
    * @param string $region
@@ -173,13 +168,13 @@ abstract class ConfigureBlockFormBase extends FormBase {
    * @return array
    *   The form array.
    */
-  public function buildForm(array $form, FormStateInterface $form_state, EntityInterface $entity = NULL, $delta = NULL, $region = NULL, $plugin_id = NULL, array $configuration = []) {
-    $this->entity = $entity;
+  public function buildForm(array $form, FormStateInterface $form_state, SectionStorageInterface $section_storage = NULL, $delta = NULL, $region = NULL, $plugin_id = NULL, array $configuration = []) {
+    $this->sectionStorage = $section_storage;
     $this->delta = $delta;
     $this->region = $region;
     $this->block = $this->prepareBlock($plugin_id, $configuration);
 
-    $form_state->setTemporaryValue('gathered_contexts', $this->contextRepository->getAvailableContexts());
+    $form_state->setTemporaryValue('gathered_contexts', $this->getAvailableContexts($section_storage));
 
     // @todo Remove once https://www.drupal.org/node/2268787 is resolved.
     $form_state->set('block_theme', $this->config('system.theme')->get('default'));
@@ -246,21 +241,18 @@ abstract class ConfigureBlockFormBase extends FormBase {
 
     $configuration = $this->block->getConfiguration();
 
-    /** @var \Drupal\layout_builder\Field\LayoutSectionItemInterface $field */
-    $field = $this->entity->layout_builder__layout->get($this->delta);
-    $section = $field->getSection();
-    $this->submitBlock($section, $this->region, $configuration['uuid'], ['block' => $configuration]);
-    $field->updateFromSection($section);
+    $section = $this->sectionStorage->getSection($this->delta);
+    $this->submitBlock($section, $this->region, $configuration['uuid'], $configuration);
 
-    $this->layoutTempstoreRepository->set($this->entity);
-    $form_state->setRedirectUrl($this->entity->toUrl('layout-builder'));
+    $this->layoutTempstoreRepository->set($this->sectionStorage);
+    $form_state->setRedirectUrl($this->sectionStorage->getLayoutBuilderUrl());
   }
 
   /**
    * {@inheritdoc}
    */
   protected function successfulAjaxSubmit(array $form, FormStateInterface $form_state) {
-    return $this->rebuildAndClose($this->entity);
+    return $this->rebuildAndClose($this->sectionStorage);
   }
 
   /**

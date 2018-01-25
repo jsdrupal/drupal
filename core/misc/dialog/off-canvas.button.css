@@ -58,7 +58,7 @@
 }
 #drupal-off-canvas input[type="submit"].button:focus,
 #drupal-off-canvas input[type="submit"].button:active {
-  box-shadow: 0 3px 3px 2px rgba(0,0,0,0.1);
+  box-shadow: 0 3px 3px 2px rgba(0, 0, 0, 0.1);
 }
 #drupal-off-canvas input[type="submit"].button--primary {
   border: 0;
@@ -69,7 +69,7 @@
 #drupal-off-canvas input[type="submit"].button--primary:hover,
 #drupal-off-canvas input[type="submit"].button--primary:focus,
 #drupal-off-canvas input[type="submit"].button--primary:active {
-  background: #2b8bd8;
+  background: #236aaf;
   outline: none;
 }
 #drupal-off-canvas .button-action:before {

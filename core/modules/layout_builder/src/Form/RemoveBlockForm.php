@@ -2,8 +2,8 @@
 
 namespace Drupal\layout_builder\Form;
 
-use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\layout_builder\SectionStorageInterface;
 
 /**
  * Provides a form to confirm the removal of a block.
@@ -50,21 +50,17 @@ class RemoveBlockForm extends LayoutRebuildConfirmFormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, EntityInterface $entity = NULL, $delta = NULL, $region = NULL, $uuid = NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, SectionStorageInterface $section_storage = NULL, $delta = NULL, $region = NULL, $uuid = NULL) {
     $this->region = $region;
     $this->uuid = $uuid;
-    return parent::buildForm($form, $form_state, $entity, $delta);
+    return parent::buildForm($form, $form_state, $section_storage, $delta);
   }
 
   /**
    * {@inheritdoc}
    */
-  protected function handleEntity(EntityInterface $entity, FormStateInterface $form_state) {
-    /** @var \Drupal\layout_builder\Field\LayoutSectionItemInterface $field */
-    $field = $entity->layout_builder__layout->get($this->delta);
-    $section = $field->getSection();
-    $section->removeBlock($this->region, $this->uuid);
-    $field->updateFromSection($section);
+  protected function handleSectionStorage(SectionStorageInterface $section_storage, FormStateInterface $form_state) {
+    $section_storage->getSection($this->delta)->removeComponent($this->uuid);
   }
 
 }

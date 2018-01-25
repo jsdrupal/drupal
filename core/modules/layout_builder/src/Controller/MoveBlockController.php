@@ -4,8 +4,8 @@ namespace Drupal\layout_builder\Controller;
 
 use Drupal\Core\DependencyInjection\ClassResolverInterface;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Entity\EntityInterface;
 use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
+use Drupal\layout_builder\SectionStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -50,8 +50,8 @@ class MoveBlockController implements ContainerInjectionInterface {
   /**
    * Moves a block to another region.
    *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity.
+   * @param \Drupal\layout_builder\SectionStorageInterface $section_storage
+   *   The section storage.
    * @param int $delta_from
    *   The delta of the original section.
    * @param int $delta_to
@@ -68,35 +68,30 @@ class MoveBlockController implements ContainerInjectionInterface {
    * @return \Drupal\Core\Ajax\AjaxResponse
    *   An AJAX response.
    */
-  public function build(EntityInterface $entity, $delta_from, $delta_to, $region_from, $region_to, $block_uuid, $preceding_block_uuid = NULL) {
-    /** @var \Drupal\layout_builder\Field\LayoutSectionItemInterface $field */
-    $field = $entity->layout_builder__layout->get($delta_from);
-    $section = $field->getSection();
+  public function build(SectionStorageInterface $section_storage, $delta_from, $delta_to, $region_from, $region_to, $block_uuid, $preceding_block_uuid = NULL) {
+    $section = $section_storage->getSection($delta_from);
 
-    $block = $section->getBlock($region_from, $block_uuid);
-    $section->removeBlock($region_from, $block_uuid);
+    $component = $section->getComponent($block_uuid);
+    $section->removeComponent($block_uuid);
 
     // If the block is moving from one section to another, update the original
     // section and load the new one.
     if ($delta_from !== $delta_to) {
-      $field->updateFromSection($section);
-      $field = $entity->layout_builder__layout->get($delta_to);
-      $section = $field->getSection();
+      $section = $section_storage->getSection($delta_to);
     }
 
     // If a preceding block was specified, insert after that. Otherwise add the
     // block to the front.
+    $component->setRegion($region_to);
     if (isset($preceding_block_uuid)) {
-      $section->insertBlock($region_to, $block_uuid, $block, $preceding_block_uuid);
+      $section->insertAfterComponent($preceding_block_uuid, $component);
     }
     else {
-      $section->addBlock($region_to, $block_uuid, $block);
+      $section->appendComponent($component);
     }
 
-    $field->updateFromSection($section);
-
-    $this->layoutTempstoreRepository->set($entity);
-    return $this->rebuildLayout($entity);
+    $this->layoutTempstoreRepository->set($section_storage);
+    return $this->rebuildLayout($section_storage);
   }
 
 }

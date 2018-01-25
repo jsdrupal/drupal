@@ -4,6 +4,8 @@ namespace Drupal\Core\Entity\KeyValueStore;
 
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\ContentEntityStorageInterface;
+use Drupal\Core\Entity\RevisionableInterface;
+use Drupal\Core\Entity\TranslatableInterface;
 
 /**
  * Provides a key value backend for content entities.
@@ -21,6 +23,20 @@ class KeyValueContentEntityStorage extends KeyValueEntityStorage implements Cont
   /**
    * {@inheritdoc}
    */
+  public function hasStoredTranslations(TranslatableInterface $entity) {
+    return FALSE;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function createRevision(RevisionableInterface $entity, $default = TRUE, $keep_untranslatable_fields = NULL) {
+    return NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function createWithSampleValues($bundle = FALSE, array $values = []) {}
 
   /**
@@ -28,6 +44,20 @@ class KeyValueContentEntityStorage extends KeyValueEntityStorage implements Cont
    */
   public function loadMultipleRevisions(array $revision_ids) {
     return [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getLatestRevisionId($entity_id) {
+    return NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getLatestTranslationAffectedRevisionId($entity_id, $langcode) {
+    return NULL;
   }
 
 }

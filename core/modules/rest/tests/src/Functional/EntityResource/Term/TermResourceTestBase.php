@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\rest\Functional\EntityResource\Term;
 
+use Drupal\Core\Cache\Cache;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\rest\Functional\BcTimestampNormalizerUnixTestTrait;
@@ -79,6 +80,7 @@ abstract class TermResourceTestBase extends EntityResourceTestBase {
     // Create a "Llama" taxonomy term.
     $term = Term::create(['vid' => $vocabulary->id()])
       ->setName('Llama')
+      ->setDescription("It is a little known fact that llamas cannot count higher than seven.")
       ->setChangedTime(123456789)
       ->set('path', '/llama');
     $term->save();
@@ -90,6 +92,66 @@ abstract class TermResourceTestBase extends EntityResourceTestBase {
    * {@inheritdoc}
    */
   protected function getExpectedNormalizedEntity() {
+    // We test with multiple parent terms, and combinations thereof.
+    // @see ::createEntity()
+    // @see ::testGet()
+    // @see ::testGetTermWithParent()
+    // @see ::providerTestGetTermWithParent()
+    $parent_term_ids = [];
+    for ($i = 0; $i < $this->entity->get('parent')->count(); $i++) {
+      $parent_term_ids[$i] = (int) $this->entity->get('parent')[$i]->target_id;
+    }
+
+    $expected_parent_normalization = FALSE;
+    switch ($parent_term_ids) {
+      case [0]:
+        $expected_parent_normalization = [
+          [
+            'target_id' => NULL,
+          ],
+        ];
+        break;
+      case [2]:
+        $expected_parent_normalization = [
+          [
+            'target_id' => 2,
+            'target_type' => 'taxonomy_term',
+            'target_uuid' => Term::load(2)->uuid(),
+            'url' => base_path() . 'taxonomy/term/2',
+          ],
+        ];
+        break;
+      case [0, 2]:
+        $expected_parent_normalization = [
+          [
+            'target_id' => NULL,
+          ],
+          [
+            'target_id' => 2,
+            'target_type' => 'taxonomy_term',
+            'target_uuid' => Term::load(2)->uuid(),
+            'url' => base_path() . 'taxonomy/term/2',
+          ],
+        ];
+        break;
+      case [3, 2]:
+        $expected_parent_normalization = [
+          [
+            'target_id' => 3,
+            'target_type' => 'taxonomy_term',
+            'target_uuid' => Term::load(3)->uuid(),
+            'url' => base_path() . 'taxonomy/term/3',
+          ],
+          [
+            'target_id' => 2,
+            'target_type' => 'taxonomy_term',
+            'target_uuid' => Term::load(2)->uuid(),
+            'url' => base_path() . 'taxonomy/term/2',
+          ],
+        ];
+        break;
+    }
+
     return [
       'tid' => [
         ['value' => 1],
@@ -109,11 +171,12 @@ abstract class TermResourceTestBase extends EntityResourceTestBase {
       ],
       'description' => [
         [
-          'value' => NULL,
+          'value' => 'It is a little known fact that llamas cannot count higher than seven.',
           'format' => NULL,
+          'processed' => "<p>It is a little known fact that llamas cannot count higher than seven.</p>\n",
         ],
       ],
-      'parent' => [],
+      'parent' => $expected_parent_normalization,
       'weight' => [
         ['value' => 0],
       ],
@@ -205,15 +268,6 @@ abstract class TermResourceTestBase extends EntityResourceTestBase {
     $response = $this->request('GET', $url, $this->getAuthenticationRequestOptions('GET'));
     $normalization = $this->serializer->decode((string) $response->getBody(), static::$format);
 
-    // @todo In https://www.drupal.org/node/2824851, we will be able to stop
-    //       unsetting these fields from the normalization, because
-    //       EntityResource::patch() will ignore any fields that are sent that
-    //       match the current value (and obviously we're sending the current
-    //       value).
-    $normalization = $this->removeFieldsFromNormalization($normalization, [
-      'changed',
-    ]);
-
     // Change term's path alias.
     $normalization['path'][0]['alias'] .= 's-rule-the-world';
 
@@ -228,6 +282,70 @@ abstract class TermResourceTestBase extends EntityResourceTestBase {
     $this->assertResourceResponse(200, FALSE, $response);
     $updated_normalization = $this->serializer->decode((string) $response->getBody(), static::$format);
     $this->assertSame($normalization['path'], $updated_normalization['path']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getExpectedCacheTags() {
+    return Cache::mergeTags(parent::getExpectedCacheTags(), ['config:filter.format.plain_text', 'config:filter.settings']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getExpectedCacheContexts() {
+    return Cache::mergeContexts(['url.site'], $this->container->getParameter('renderer.config')['required_cache_contexts']);
+  }
+
+  /**
+   * Tests GETting a term with a parent term other than the default <root> (0).
+   *
+   * @see ::getExpectedNormalizedEntity()
+   *
+   * @dataProvider providerTestGetTermWithParent
+   */
+  public function testGetTermWithParent(array $parent_term_ids) {
+    // Create all possible parent terms.
+    Term::create(['vid' => Vocabulary::load('camelids')->id()])
+      ->setName('Lamoids')
+      ->save();
+    Term::create(['vid' => Vocabulary::load('camelids')->id()])
+      ->setName('Wimoids')
+      ->save();
+
+    // Modify the entity under test to use the provided parent terms.
+    $this->entity->set('parent', $parent_term_ids)->save();
+
+    $this->initAuthentication();
+    $url = $this->getEntityResourceUrl();
+    $url->setOption('query', ['_format' => static::$format]);
+    $request_options = $this->getAuthenticationRequestOptions('GET');
+    $this->provisionEntityResource();
+    $this->setUpAuthorization('GET');
+    $response = $this->request('GET', $url, $request_options);
+    $expected = $this->getExpectedNormalizedEntity();
+    static::recursiveKSort($expected);
+    $actual = $this->serializer->decode((string) $response->getBody(), static::$format);
+    static::recursiveKSort($actual);
+    $this->assertSame($expected, $actual);
+  }
+
+  public function providerTestGetTermWithParent() {
+    return [
+      'root parent: [0] (= no parent)' => [
+        [0]
+      ],
+      'non-root parent: [2]' => [
+        [2]
+      ],
+      'multiple parents: [0,2] (root + non-root parent)' => [
+        [0, 2]
+      ],
+      'multiple parents: [3,2] (both non-root parents)' => [
+        [3, 2]
+      ],
+    ];
   }
 
 }

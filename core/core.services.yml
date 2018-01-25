@@ -41,6 +41,7 @@ parameters:
     exposedHeaders: false
     maxAge: false
     supportsCredentials: false
+  tempstore.expire: 604800
 services:
   # Simple cache contexts, directly derived from the request context.
   cache_context.ip:
@@ -803,6 +804,8 @@ services:
   router.route_provider.lazy_builder:
     class: Drupal\Core\Routing\RouteProviderLazyBuilder
     arguments: ['@router.route_provider', '@router.builder']
+    tags:
+      - { name: event_subscriber }
   router.route_preloader:
     class: Drupal\Core\Routing\RoutePreloader
     arguments: ['@router.route_provider', '@state', '@cache.bootstrap']
@@ -933,11 +936,22 @@ services:
   method_filter:
     class: Drupal\Core\Routing\MethodFilter
     tags:
-      - { name: route_filter, priority: 1 }
+      # The HTTP method route filter must run very early: it removes any routes
+      # whose requirements do not allow the HTTP method of the current request.
+      # Throws a 405 if no routes match the current request's HTTP method.
+      # (If it runs before content_type_header_matcher, it can ensure that only
+      # receives routes which can have a Content-Type request header.)
+      - { name: route_filter, priority: 10 }
   content_type_header_matcher:
     class: Drupal\Core\Routing\ContentTypeHeaderMatcher
     tags:
-      - { name: route_filter }
+      # The Content-Type request header route filter must run early: it removes
+      # any routes whose requirements do not allow the Content-Type request
+      # header of the current request.
+      # Throws a 415 if no routes match the Content-Type request header of the
+      # current request, or if it has no Content-Type request header.
+      # Note it does nothing for GET requests.
+      - { name: route_filter, priority: 5 }
   paramconverter_manager:
     class: Drupal\Core\ParamConverter\ParamConverterManager
     tags:
@@ -1646,5 +1660,15 @@ services:
     tags:
       - { name: event_subscriber }
   messenger:
-    class: Drupal\Core\Messenger\LegacyMessenger
-    arguments: ['@page_cache_kill_switch']
+    class: Drupal\Core\Messenger\Messenger
+    arguments: ['@session.flash_bag', '@page_cache_kill_switch']
+  tempstore.private:
+    class: Drupal\Core\TempStore\PrivateTempStoreFactory
+    arguments: ['@keyvalue.expirable', '@lock', '@current_user', '@request_stack', '%tempstore.expire%']
+    tags:
+      - { name: backend_overridable }
+  tempstore.shared:
+    class: Drupal\Core\TempStore\SharedTempStoreFactory
+    arguments: ['@keyvalue.expirable', '@lock', '@request_stack', '%tempstore.expire%']
+    tags:
+      - { name: backend_overridable }

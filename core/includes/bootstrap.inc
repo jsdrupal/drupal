@@ -210,7 +210,7 @@ function config_get_config_directory($type) {
  *   The filename of the item if it is to be set explicitly rather
  *   than by consulting the database.
  *
- * @return
+ * @return string
  *   The filename of the requested item or NULL if the item is not found.
  */
 function drupal_get_filename($type, $name, $filename = NULL) {
@@ -275,7 +275,7 @@ function drupal_get_filename($type, $name, $filename = NULL) {
  *   The name of the item for which the path is requested. Ignored for
  *   $type 'core'.
  *
- * @return
+ * @return string
  *   The path to the requested item or an empty string if the item is not found.
  */
 function drupal_get_path($type, $name) {
@@ -466,11 +466,17 @@ function watchdog_exception($type, Exception $exception, $message = NULL, $varia
  *
  * @see drupal_get_messages()
  * @see status-messages.html.twig
+ * @see https://www.drupal.org/node/2774931
+ *
+ * @deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0.
+ *   Use \Drupal\Core\Messenger\MessengerInterface::addMessage() instead.
  */
 function drupal_set_message($message = NULL, $type = 'status', $repeat = FALSE) {
-  /* @var \Drupal\Core\Messenger\MessengerInterface $messenger */
-  $messenger = \Drupal::service('messenger');
-  $messenger->addMessage($message, $type, $repeat);
+  @trigger_error('drupal_set_message() is deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0. Use \Drupal\Core\Messenger\MessengerInterface::addMessage() instead. See https://www.drupal.org/node/2774931', E_USER_DEPRECATED);
+  $messenger = \Drupal::messenger();
+  if (isset($message)) {
+    $messenger->addMessage($message, $type, $repeat);
+  }
   return $messenger->all();
 }
 
@@ -498,11 +504,16 @@ function drupal_set_message($message = NULL, $type = 'status', $repeat = FALSE) 
  *
  * @see drupal_set_message()
  * @see status-messages.html.twig
+ * @see https://www.drupal.org/node/2774931
+ *
+ * @deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0.
+ *   Use \Drupal\Core\Messenger\MessengerInterface::all() or
+ *   \Drupal\Core\Messenger\MessengerInterface::messagesByType() instead.
  */
 function drupal_get_messages($type = NULL, $clear_queue = TRUE) {
-  /** @var \Drupal\Core\Messenger\MessengerInterface $messenger */
-  $messenger = \Drupal::hasService('messenger') ? \Drupal::service('messenger') : NULL;
-  if ($messenger && ($messages = $messenger->all())) {
+  @trigger_error('drupal_get_message() is deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0. Use \Drupal\Core\Messenger\MessengerInterface::all() or \Drupal\Core\Messenger\MessengerInterface::messagesByType() instead. See https://www.drupal.org/node/2774931', E_USER_DEPRECATED);
+  $messenger = \Drupal::messenger();
+  if ($messages = $messenger->all()) {
     if ($type) {
       if ($clear_queue) {
         $messenger->deleteByType($type);
@@ -523,6 +534,9 @@ function drupal_get_messages($type = NULL, $clear_queue = TRUE) {
 
 /**
  * Returns the time zone of the current user.
+ *
+ * @return string
+ *   The name of the current user's timezone or the name of the default timezone.
  */
 function drupal_get_user_timezone() {
   $user = \Drupal::currentUser();
@@ -902,7 +916,7 @@ function drupal_classloader_register($name, $path) {
  *   internally and should not be passed in; use drupal_static_reset() instead.
  *   (This function's return value should not be used when TRUE is passed in.)
  *
- * @return
+ * @return array
  *   Returns a variable by reference.
  *
  * @see drupal_static_reset()
@@ -973,12 +987,12 @@ function drupal_placeholder($text) {
  * Wrapper for register_shutdown_function() that catches thrown exceptions to
  * avoid "Exception thrown without a stack frame in Unknown".
  *
- * @param $callback
+ * @param callable $callback
  *   The shutdown function to register.
  * @param ...
  *   Additional arguments to pass to the shutdown function.
  *
- * @return
+ * @return array
  *   Array of shutdown functions to be executed.
  *
  * @see register_shutdown_function()

@@ -1,0 +1,8 @@
+{
+  "BASE_URL": "",
+  "DB_URL": "",
+  "NIGHTWATCH_OUTPUT": "reports/nightwatch",
+  "WEBDRIVER_HOSTNAME": "localhost",
+  "HEADLESS_CHROME": true,
+  "CHROME_ARGS": []
+}

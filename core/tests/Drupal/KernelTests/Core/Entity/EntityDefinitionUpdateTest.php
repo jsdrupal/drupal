@@ -113,6 +113,7 @@ class EntityDefinitionUpdateTest extends EntityKernelTestBase {
         // The revision key is now defined, so the revision field needs to be
         // created.
         t('The %field_name field needs to be installed.', ['%field_name' => 'Revision ID']),
+        t('The %field_name field needs to be installed.', ['%field_name' => 'Default revision']),
       ],
     ];
     $this->assertEqual($this->entityDefinitionUpdateManager->getChangeSummary(), $expected, 'EntityDefinitionUpdateManager reports the expected change summary.');
@@ -465,7 +466,9 @@ class EntityDefinitionUpdateTest extends EntityKernelTestBase {
       // Only one row will be created for non-revisionable base fields.
       $this->assertCount($base_field_revisionable ? 2 : 1, $result);
 
-      $this->assertSame([
+      // Use assertEquals and not assertSame here to prevent that a different
+      // sequence of the columns in the table will affect the check.
+      $this->assertEquals([
         'bundle' => $entity->bundle(),
         'deleted' => '1',
         'entity_id' => $entity->id(),
@@ -477,7 +480,9 @@ class EntityDefinitionUpdateTest extends EntityKernelTestBase {
 
       // Two rows only exist if the base field is revisionable.
       if ($base_field_revisionable) {
-        $this->assertSame([
+        // Use assertEquals and not assertSame here to prevent that a different
+        // sequence of the columns in the table will affect the check.
+        $this->assertEquals([
           'bundle' => $entity->bundle(),
           'deleted' => '1',
           'entity_id' => $entity->id(),
